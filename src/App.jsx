@@ -171,20 +171,15 @@ export default function PDFChatApp() {
       if (response.ok && result.success) {
         const { originalQuery, enhancedQuery, aiResponse } = result.data || {};
 
-        // Combine enhanced query and AI response in a single message
+        // Create message with enhanced query
         let combinedMessage = '';
         
         if (enhancedQuery) {
-          combinedMessage += `Enhanced Query: ${enhancedQuery}\n\n`;
+          combinedMessage += `Enhanced Query: ${enhancedQuery}`;
         }
 
-        if (aiResponse) {
-          combinedMessage += aiResponse;
-        } else {
-          combinedMessage += `No results found for "${originalQuery}". Try uploading some PDF files first.`;
-        }
-
-        addBotMessage(combinedMessage);
+        // Pass aiResponse separately as the second parameter
+        addBotMessage(combinedMessage, aiResponse);
       } else {
         addBotMessage(`❌ Search failed: ${result.error || result.message || 'Unknown error'}`);
       }
@@ -208,9 +203,61 @@ export default function PDFChatApp() {
   };
 
   const renderAiResponse = (aiResponse) => {
-    if (typeof aiResponse === 'string') {
-      return <div className="mt-2 text-gray-800">{aiResponse}</div>;
+    // Handle object format (both old and new)
+    if (typeof aiResponse === 'object' && aiResponse !== null) {
+      return (
+        <div className="mt-4 space-y-3">
+          {Object.entries(aiResponse).map(([filename, data], index) => {
+            // Handle new format: filename -> string (answer)
+            const answer = typeof data === 'string' ? data : data?.answer || 'No answer available';
+            
+            return (
+              <div key={index} className="border-l-4 border-blue-500 bg-gradient-to-r from-blue-50 to-transparent rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center space-x-2 mb-3">
+                  <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  <h4 className="font-bold text-slate-800 text-base truncate">{filename}</h4>
+                </div>
+                <div className="pl-7 text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">
+                  {answer}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
     }
+    
+    // Fallback for string format (backward compatibility)
+    if (typeof aiResponse === 'string') {
+      try {
+        const parsedResponse = JSON.parse(aiResponse);
+        if (typeof parsedResponse === 'object' && parsedResponse !== null) {
+          return (
+            <div className="mt-4 space-y-3">
+              {Object.entries(parsedResponse).map(([filename, data], index) => {
+                const answer = typeof data === 'string' ? data : data?.answer || 'No answer available';
+                
+                return (
+                  <div key={index} className="border-l-4 border-blue-500 bg-gradient-to-r from-blue-50 to-transparent rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                      <h4 className="font-bold text-slate-800 text-base truncate">{filename}</h4>
+                    </div>
+                    <div className="pl-7 text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">
+                      {answer}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        }
+        return <div className="mt-2 text-gray-800">{aiResponse}</div>;
+      } catch (error) {
+        return <div className="mt-2 text-gray-800">{aiResponse}</div>;
+      }
+    }
+    
     return null;
   };
 
